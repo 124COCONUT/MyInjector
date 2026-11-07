@@ -1,6 +1,7 @@
 package com.example.coconut;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -13,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity;
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Button btnToggle;
+    private boolean isEnabled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,6 +26,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         
         btnToggle = findViewById(R.id.btnToggle);
         btnToggle.setOnClickListener(this);
+
+        // Проверка разрешения на оверлей
+        if (!Settings.canDrawOverlays(this)) {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        }
     }
 
     @Override
@@ -31,39 +40,47 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         int id = v.getId();
         
         if (id == R.id.btnInjector) {
-            Toast.makeText(this, "Редактор (в разработке)", Toast.LENGTH_SHORT).show();
+            // Открываем экран для написания скрипта
+            Intent intent = new Intent(MainActivity.this, InjectorActivity.class);
+            startActivity(intent);
         } else if (id == R.id.btnColors) {
-            Toast.makeText(this, "Цвета (в разработке)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Настройки цветов (в разработке)", Toast.LENGTH_SHORT).show();
         } else if (id == R.id.btnToggle) {
-            toggleService();
+            toggleState();
         }
     }
 
-    private void toggleService() {
-        // Проверяем, включена ли наша служба оверлея
-        if (!isAccessibilityServiceEnabled()) {
-            Toast.makeText(this, "Включите COCONUT в Спец. возможностях!", Toast.LENGTH_LONG).show();
-            // Открываем настройки спец. возможностей
-            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
-            startActivity(intent);
-        } else {
-            // Служба включена, значит меню уже работает (или мы его перезапускаем)
-            Toast.makeText(this, "Служба активна! Меню должно быть на экране.", Toast.LENGTH_SHORT).show();
-            // Отправляем команду службе показать меню
+    private void toggleState() {
+        if (!isEnabled) {
+            // ПРОВЕРКА: есть ли сохраненный скрипт?
+            SharedPreferences prefs = getSharedPreferences("CheatPrefs", MODE_PRIVATE);
+            String script = prefs.getString("my_script", "");
+            
+            if (script.isEmpty()) {
+                Toast.makeText(this, "Сначала напишите скрипт в ИНЖЕКТОРЕ!", Toast.LENGTH_LONG).show();
+                return; // Не включаем, если скрипта нет
+            }
+
+            // Включаем
+            isEnabled = true;
+            btnToggle.setText("ЧИТ АКТИВЕН");
+            btnToggle.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.RED));
+            Toast.makeText(this, "Инжектор активирован", Toast.LENGTH_SHORT).show();
+            
+            // Запускаем службу
             Intent intent = new Intent(this, OverlayService.class);
             intent.setAction("SHOW_MENU");
             startService(intent);
-        }
-    }
-
-    private boolean isAccessibilityServiceEnabled() {
-        String service = getPackageName() + "/" + OverlayService.class.getCanonicalName();
-        try {
-            String enabledServices = Settings.Secure.getString(getContentResolver(),
-                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-            return enabledServices != null && enabledServices.contains(service);
-        } catch (Exception e) {
-            return false;
+        } else {
+            // Выключаем
+            isEnabled = false;
+            btnToggle.setText("ВКЛ/ВЫКЛ");
+            btnToggle.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9800")));
+            Toast.makeText(this, "Инжектор отключен", Toast.LENGTH_SHORT).show();
+            
+            // Останавливаем службу (если она запущена)
+            Intent intent = new Intent(this, OverlayService.class);
+            stopService(intent);
         }
     }
 }
