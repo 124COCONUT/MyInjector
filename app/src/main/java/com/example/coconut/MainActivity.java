@@ -2,42 +2,22 @@ package com.example.coconut;
 
 import android.content.Intent;
 import android.graphics.Color;
-import android.graphics.PixelFormat;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.view.Gravity;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private Button btnToggle;
-    private WindowManager windowManager;
-    private LinearLayout floatingMenu;
-    private boolean isEnabled = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        // Запрос разрешения на оверлей (для Android 6+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (!Settings.canDrawOverlays(this)) {
-                Toast.makeText(this, "Разрешите отображение поверх других приложений!", Toast.LENGTH_LONG).show();
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
-            }
-        }
 
         findViewById(R.id.btnInjector).setOnClickListener(this);
         findViewById(R.id.btnColors).setOnClickListener(this);
@@ -51,100 +31,39 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         int id = v.getId();
         
         if (id == R.id.btnInjector) {
-            Toast.makeText(this, "Открыт редактор кода (в разработке)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Редактор (в разработке)", Toast.LENGTH_SHORT).show();
         } else if (id == R.id.btnColors) {
-            Toast.makeText(this, "Настройки цветов (в разработке)", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Цвета (в разработке)", Toast.LENGTH_SHORT).show();
         } else if (id == R.id.btnToggle) {
-            // Перед включением чекаем, дал ли юзер разрешение
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-                Toast.makeText(this, "Сначала разрешите оверлей в настройках!", Toast.LENGTH_LONG).show();
-                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:" + getPackageName()));
-                startActivity(intent);
-                return;
-            }
-            toggleState();
+            toggleService();
         }
     }
 
-    private void toggleState() {
-        if (isEnabled) {
-            isEnabled = false;
-            btnToggle.setText("ВКЛ/ВЫКЛ");
-            btnToggle.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9800")));
-            Toast.makeText(this, "Инжектор отключен", Toast.LENGTH_SHORT).show();
-            
-            if (windowManager != null && floatingMenu != null) {
-                windowManager.removeView(floatingMenu);
-            }
+    private void toggleService() {
+        // Проверяем, включена ли наша служба оверлея
+        if (!isAccessibilityServiceEnabled()) {
+            Toast.makeText(this, "Включите COCONUT в Спец. возможностях!", Toast.LENGTH_LONG).show();
+            // Открываем настройки спец. возможностей
+            Intent intent = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            startActivity(intent);
         } else {
-            isEnabled = true;
-            btnToggle.setText("ЧИТ АКТИВЕН");
-            btnToggle.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.RED));
-            Toast.makeText(this, "Инжектор активирован", Toast.LENGTH_SHORT).show();
-            
-            showFloatingMenu();
+            // Служба включена, значит меню уже работает (или мы его перезапускаем)
+            Toast.makeText(this, "Служба активна! Меню должно быть на экране.", Toast.LENGTH_SHORT).show();
+            // Отправляем команду службе показать меню
+            Intent intent = new Intent(this, OverlayService.class);
+            intent.setAction("SHOW_MENU");
+            startService(intent);
         }
     }
 
-    private void showFloatingMenu() {
-        if (floatingMenu != null) return;
-
-        windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
-        
-        floatingMenu = new LinearLayout(this);
-        floatingMenu.setOrientation(LinearLayout.VERTICAL);
-        floatingMenu.setBackgroundColor(Color.parseColor("#E61A1A1A"));
-        floatingMenu.setPadding(40, 40, 40, 40);
-
-        TextView title = new TextView(this);
-        title.setText("HACK MENU");
-        title.setTextColor(Color.GREEN);
-        title.setTextSize(20);
-        title.setGravity(Gravity.CENTER);
-        floatingMenu.addView(title);
-
-        CheckBox espBox = new CheckBox(this);
-        espBox.setText("ESP (Wallhack)");
-        espBox.setTextColor(Color.WHITE);
-        floatingMenu.addView(espBox);
-
-        CheckBox aimBox = new CheckBox(this);
-        aimBox.setText("Aimbot (Silent)");
-        aimBox.setTextColor(Color.WHITE);
-        floatingMenu.addView(aimBox);
-
-        Button closeBtn = new Button(this);
-        closeBtn.setText("ЗАКРЫТЬ");
-        closeBtn.setBackgroundColor(Color.RED);
-        closeBtn.setTextColor(Color.WHITE);
-        closeBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (windowManager != null && floatingMenu != null) {
-                    windowManager.removeView(floatingMenu);
-                }
-            }
-        });
-        floatingMenu.addView(closeBtn);
-
-        int layoutFlag = (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) 
-            ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY 
-            : WindowManager.LayoutParams.TYPE_PHONE;
-
-        WindowManager.LayoutParams params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                WindowManager.LayoutParams.WRAP_CONTENT,
-                layoutFlag,
-                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-                PixelFormat.TRANSLUCENT
-        );
-        params.gravity = Gravity.CENTER;
-        
+    private boolean isAccessibilityServiceEnabled() {
+        String service = getPackageName() + "/" + OverlayService.class.getCanonicalName();
         try {
-            windowManager.addView(floatingMenu, params);
+            String enabledServices = Settings.Secure.getString(getContentResolver(),
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+            return enabledServices != null && enabledServices.contains(service);
         } catch (Exception e) {
-            Toast.makeText(this, "Ошибка окна: " + e.getMessage(), Toast.LENGTH_LONG).show();
+            return false;
         }
     }
 }
