@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.view.Gravity;
@@ -28,11 +29,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Запрашиваем разрешение на отображение поверх других приложений
-        if (!Settings.canDrawOverlays(this)) {
-            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                    Uri.parse("package:" + getPackageName()));
-            startActivity(intent);
+        // Запрос разрешения на оверлей (для Android 6+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (!Settings.canDrawOverlays(this)) {
+                Toast.makeText(this, "Разрешите отображение поверх других приложений!", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+            }
         }
 
         findViewById(R.id.btnInjector).setOnClickListener(this);
@@ -51,13 +55,20 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         } else if (id == R.id.btnColors) {
             Toast.makeText(this, "Настройки цветов (в разработке)", Toast.LENGTH_SHORT).show();
         } else if (id == R.id.btnToggle) {
+            // Перед включением чекаем, дал ли юзер разрешение
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+                Toast.makeText(this, "Сначала разрешите оверлей в настройках!", Toast.LENGTH_LONG).show();
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:" + getPackageName()));
+                startActivity(intent);
+                return;
+            }
             toggleState();
         }
     }
 
     private void toggleState() {
         if (isEnabled) {
-            // Выключаем
             isEnabled = false;
             btnToggle.setText("ВКЛ/ВЫКЛ");
             btnToggle.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.parseColor("#FF9800")));
@@ -67,7 +78,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 windowManager.removeView(floatingMenu);
             }
         } else {
-            // Включаем
             isEnabled = true;
             btnToggle.setText("ЧИТ АКТИВЕН");
             btnToggle.setBackgroundTintList(android.content.res.ColorStateList.valueOf(Color.RED));
