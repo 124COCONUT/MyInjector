@@ -2,9 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.coconut">
 
-    <!-- Разрешение для интернета (если понадобится) -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <!-- Разрешение для оверлея (на случай старых Android) -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <application
@@ -15,6 +13,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.DayNight.NoActionBar">
 
+        <!-- Главный экран -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -24,7 +23,12 @@
             </intent-filter>
         </activity>
 
-        <!-- ВОТ ЭТОТ БЛОК НУЖНО ДОБАВИТЬ ДЛЯ СЛУЖБЫ -->
+        <!-- Экран инжектора (чтобы не вылетало) -->
+        <activity
+            android:name=".InjectorActivity"
+            android:exported="false" />
+
+        <!-- Наша служба для плавающего меню -->
         <service
             android:name=".OverlayService"
             android:exported="true"
@@ -38,5 +42,4 @@
         </service>
 
     </application>
-
 </manifest>
