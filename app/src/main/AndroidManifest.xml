@@ -23,12 +23,12 @@
             </intent-filter>
         </activity>
 
-        <!-- Экран инжектора (чтобы не вылетало) -->
+        <!-- Экран инжектора -->
         <activity
             android:name=".InjectorActivity"
             android:exported="false" />
 
-        <!-- Наша служба для плавающего меню -->
+        <!-- Служба для плавающего меню -->
         <service
             android:name=".OverlayService"
             android:exported="true"
@@ -39,6 +39,16 @@
             <meta-data
                 android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Служба для VPN (КЛЮЧИК) -->
+        <service
+            android:name=".MyVpnService"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
         </service>
 
     </application>
