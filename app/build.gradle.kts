@@ -41,6 +41,4 @@ dependencies {
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.ext.junit)
     
-    // Вот эта строка добавляет библиотеку для VPN
-    implementation("com.github.2dust:v2rayNG:1.8.5")
 }
